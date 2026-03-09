@@ -1,7 +1,91 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import * as XLSX from 'xlsx'
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer
+} from 'recharts'
 
 const API = "https://bcsir-server-power.onrender.com"
+
+// const API = "http://localhost:3000"
+const topicLabels = {
+    'BCSIRbus':     'Bus Voltage',
+    'BCSIRshunt':   'Shunt Voltage',
+    'BCSIRload':    'Load',
+    'BCSIRcurrent': 'Current',
+    'BCSIRpower':   'Power'
+  }
+
+  const topicUnits = {
+    'BCSIRbus':     'V',
+    'BCSIRshunt':   'mV',
+    'BCSIRload':    'Ω',
+    'BCSIRcurrent': 'A',
+    'BCSIRpower':   'W'
+  }
+
+  const topicColors = {
+    'BCSIRbus':     'from-blue-50 to-blue-100 border-blue-200 text-blue-900',
+    'BCSIRshunt':   'from-purple-50 to-purple-100 border-purple-200 text-purple-900',
+    'BCSIRload':    'from-orange-50 to-orange-100 border-orange-200 text-orange-900',
+    'BCSIRcurrent': 'from-green-50 to-green-100 border-green-200 text-green-900',
+    'BCSIRpower':   'from-red-50 to-red-100 border-red-200 text-red-900',
+  }
+
+
+//Chart Update
+
+const CustomTooltip = ({ active, payload, label, unit }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm">
+        <p className="text-gray-500 mb-1">{label}</p>
+        <p className="font-bold text-gray-900">
+          {payload[0].value} <span className="font-normal text-gray-500">{unit}</span>
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
+function SensorChart({ topic, data }) {
+
+  const lineColors = {
+    'BCSIRbus': '#3b82f6', 'BCSIRshunt': '#a855f7',
+    'BCSIRload': '#f97316', 'BCSIRcurrent': '#22c55e', 'BCSIRpower': '#ef4444'
+  }
+  const unit = topicUnits[topic]
+  const tickStep = Math.max(1, Math.floor(data.length / 8))
+  const ticks = data.filter((_, i) => i % tickStep === 0).map(d => d.label)
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-800">{topicLabels[topic]}</h3>
+        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">{unit}</span>
+      </div>
+      {data.length === 0 ? (
+        <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No data</div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="label" ticks={ticks} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} width={48} />
+            <Tooltip content={<CustomTooltip unit={unit} />} />
+            <Line type="monotone" dataKey="value" stroke={lineColors[topic]} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+      <p className="text-xs text-gray-400 mt-2 text-right">{data.length} pts</p>
+    </div>
+  )
+}
+
+
+
+//Chart Update End
 
 function App() {
   const [currentData, setCurrentData] = useState({})
@@ -10,7 +94,152 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState(null)
   const [exportLoading, setExportLoading] = useState(false)
+const [activeTopics, setActiveTopics] = useState([])
+const [chartRange, setChartRange] = useState('today')
+const [customFrom, setCustomFrom] = useState('')
+const [customTo, setCustomTo]   = useState('')
+const [allChartRecords, setAllChartRecords] = useState([])
+const [chartLoading, setChartLoading] = useState(false)
+const toggleTopic = (topic) => {
+  setActiveTopics(prev =>
+    prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+  )
+}
 
+// Build per-topic chart data sorted ascending by timestamp
+// const chartData = (() => {
+//   const byTopic = {}
+//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
+//   latestRecords.forEach(r => {
+//     if (byTopic[r.topic] !== undefined) {
+//       byTopic[r.topic].push({
+//         time: r.timestamp,
+//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
+//         value: parseFloat(r.value),
+//       })
+//     }
+//   })
+//   Object.keys(byTopic).forEach(t => {
+//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
+//   })
+//   return byTopic
+// })()
+// Filter allChartRecords by selected date range
+// const filteredChartRecords = (() => {
+//   const now = new Date()
+//   let from, to
+
+//   if (chartRange === 'today') {
+//     from = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+//     to   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+//   } else if (chartRange === '7days') {
+//     from = new Date(now - 7 * 24 * 60 * 60 * 1000)
+//     to   = now
+//   } else if (chartRange === '30days') {
+//     from = new Date(now - 30 * 24 * 60 * 60 * 1000)
+//     to   = now
+//   } else if (chartRange === 'custom' && customFrom && customTo) {
+//     from = new Date(customFrom)
+//     to   = new Date(customTo)
+//     to.setHours(23, 59, 59)
+//   } else {
+//     return allChartRecords
+//   }
+
+//   return allChartRecords.filter(r => {
+//     const t = new Date(r.timestamp)
+//     return t >= from && t <= to
+//   })
+// })()
+
+// // Build per-topic chart data sorted ascending by timestamp
+// const chartData = (() => {
+//   const byTopic = {}
+//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
+//   filteredChartRecords.forEach(r => {
+//     if (byTopic[r.topic] !== undefined) {
+//       byTopic[r.topic].push({
+//         time:  r.timestamp,
+//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
+//         value: parseFloat(r.value),
+//       })
+//     }
+//   })
+//   Object.keys(byTopic).forEach(t => {
+//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
+//   })
+//   return byTopic
+// })()
+const filteredChartRecords = useMemo(() => {
+  const now = new Date()
+  let from, to
+
+  if (chartRange === 'today') {
+    from = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    to   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+  } else if (chartRange === '7days') {
+    from = new Date(now - 7 * 24 * 60 * 60 * 1000)
+    to   = now
+  } else if (chartRange === '30days') {
+    from = new Date(now - 30 * 24 * 60 * 60 * 1000)
+    to   = now
+  } else if (chartRange === 'custom' && customFrom && customTo) {
+    from = new Date(customFrom)
+    to   = new Date(customTo)
+    to.setHours(23, 59, 59)
+  } else {
+    return allChartRecords
+  }
+
+  return allChartRecords.filter(r => {
+    const t = new Date(r.timestamp)
+    return t >= from && t <= to
+  })
+}, [allChartRecords, chartRange, customFrom, customTo])
+
+// const chartData = useMemo(() => {
+//   const byTopic = {}
+//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
+//   filteredChartRecords.forEach(r => {
+//     if (byTopic[r.topic] !== undefined) {
+//       byTopic[r.topic].push({
+//         time:  r.timestamp,
+//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
+//         value: parseFloat(r.value),
+//       })
+//     }
+//   })
+//   Object.keys(byTopic).forEach(t => {
+//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
+//   })
+//   return byTopic
+// }, [filteredChartRecords])
+const chartData = useMemo(() => {
+  const byTopic = {}
+  Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
+  filteredChartRecords.forEach(r => {
+    if (byTopic[r.topic] !== undefined) {
+      byTopic[r.topic].push({
+        time:  r.timestamp,
+        // Show date+time for multi-day ranges, time-only for today
+        label: chartRange === 'today'
+          ? new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false })
+          : new Date(r.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            + ' ' + new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+        value: parseFloat(r.value),
+      })
+    }
+  })
+  Object.keys(byTopic).forEach(t => {
+    byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
+  })
+  return byTopic
+}, [filteredChartRecords, chartRange])
+
+// Sort table newest → oldest
+const sortedRecords = [...latestRecords].sort(
+  (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+)
   const fetchCurrentData = async () => {
     try {
       const response = await fetch(`${API}/api/current`)
@@ -26,7 +255,7 @@ function App() {
 
   const fetchLatestRecords = async () => {
     try {
-      const response = await fetch(`${API}/api/latest?limit=50`)
+      const response = await fetch(`${API}/api/latest?limit=10`)
       const result = await response.json()
       if (result.success) {
         setLatestRecords(result.data)
@@ -49,6 +278,68 @@ function App() {
       setLoading(false)
     }
   }
+
+
+// const fetchChartData = async () => {
+//   setChartLoading(true)
+//   try {
+//     const response = await fetch(`${API}/api/all`)
+//     const result = await response.json()
+//     if (result.success) {
+//       setAllChartRecords(result.data)
+//     }
+//   } catch (error) {
+//     console.error('Error fetching chart data:', error)
+//   } finally {
+//     setChartLoading(false)
+//   }
+// }
+
+
+const fetchChartData = async (range, from, to) => {
+  setChartLoading(true)
+  try {
+    let url = `${API}/api/all`
+    const params = new URLSearchParams()
+
+    if (range === 'today') {
+      const now = new Date()
+      params.set('from', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString())
+      params.set('to',   new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString())
+    } else if (range === '7days') {
+      params.set('from', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    } else if (range === '30days') {
+      params.set('from', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    } else if (range === 'custom' && from && to) {
+      params.set('from', new Date(from).toISOString())
+      params.set('to',   new Date(to + ':59').toISOString())
+    }
+
+    if ([...params].length) url += '?' + params.toString()
+    const response = await fetch(url)
+    const result = await response.json()
+    if (result.success) setAllChartRecords(result.data)
+  } catch (error) {
+    console.error('Error fetching chart data:', error)
+  } finally {
+    setChartLoading(false)
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   const exportToExcel = async () => {
     const password = prompt("🔐 Enter password to export:")
@@ -120,6 +411,7 @@ function App() {
     fetchCurrentData()
     fetchLatestRecords()
     fetchStats()
+    // fetchChartData()
   }, [])
 
   useEffect(() => {
@@ -130,30 +422,11 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const topicLabels = {
-    'BCSIRbus':     'Bus Voltage',
-    'BCSIRshunt':   'Shunt Voltage',
-    'BCSIRload':    'Load',
-    'BCSIRcurrent': 'Current',
-    'BCSIRpower':   'Power'
-  }
+useEffect(() => {
+  fetchChartData(chartRange, customFrom, customTo)
+}, [chartRange, customFrom, customTo])
 
-  const topicUnits = {
-    'BCSIRbus':     'V',
-    'BCSIRshunt':   'mV',
-    'BCSIRload':    'Ω',
-    'BCSIRcurrent': 'A',
-    'BCSIRpower':   'W'
-  }
-
-  const topicColors = {
-    'BCSIRbus':     'from-blue-50 to-blue-100 border-blue-200 text-blue-900',
-    'BCSIRshunt':   'from-purple-50 to-purple-100 border-purple-200 text-purple-900',
-    'BCSIRload':    'from-orange-50 to-orange-100 border-orange-200 text-orange-900',
-    'BCSIRcurrent': 'from-green-50 to-green-100 border-green-200 text-green-900',
-    'BCSIRpower':   'from-red-50 to-red-100 border-red-200 text-red-900',
-  }
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -278,10 +551,194 @@ function App() {
           </div>
         </div>
 
+
+
+
+{/* Charts Section */}
+{/* <div className="bg-white rounded-lg shadow mb-8">
+  <div className="px-6 py-4 border-b border-gray-200">
+    <h2 className="text-xl font-semibold text-gray-900">📈 Sensor Trends</h2>
+    <p className="text-xs text-gray-400 mt-1">Click a sensor to toggle its graph · sorted by time</p>
+  </div> */}
+
+  {/* Toggle Buttons */}
+  {/* <div className="px-6 pt-4 flex flex-wrap gap-2">
+    {Object.entries(topicLabels).map(([topic, label]) => {
+      const btnColors = {
+        'BCSIRbus':     'bg-blue-600 text-white',
+        'BCSIRshunt':   'bg-purple-600 text-white',
+        'BCSIRload':    'bg-orange-500 text-white',
+        'BCSIRcurrent': 'bg-green-600 text-white',
+        'BCSIRpower':   'bg-red-600 text-white',
+      }
+      const isActive = activeTopics.includes(topic)
+      return (
+        <button
+          key={topic}
+          onClick={() => toggleTopic(topic)}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+            isActive
+              ? btnColors[topic] + ' border-transparent shadow'
+              : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          {label}
+        </button>
+      )
+    })}
+  </div> */}
+
+  {/* Graphs */}
+  {/* <div className="p-6">
+    {activeTopics.length === 0 ? (
+      <p className="text-center text-gray-400 text-sm py-8">👆 Click a sensor above to see its graph</p>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {activeTopics.map(topic => (
+          <SensorChart key={topic} topic={topic} data={chartData[topic]} />
+        ))}
+      </div>
+    )}
+  </div>
+</div> */}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{/* Charts Section */}
+<div className="bg-white rounded-lg shadow mb-8">
+  <div className="px-6 py-4 border-b border-gray-200">
+    <h2 className="text-xl font-semibold text-gray-900">📈 Sensor Trends</h2>
+    <p className="text-xs text-gray-400 mt-1">Click a sensor to toggle · data sorted by time</p>
+  </div>
+
+  {/* Date Range Controls */}
+  <div className="px-6 pt-4 flex flex-wrap items-center gap-3 border-b border-gray-100 pb-4">
+    {[
+      { key: 'today',   label: 'Today' },
+      { key: '7days',   label: 'Last 7 Days' },
+      { key: '30days',  label: 'Last 30 Days' },
+      { key: 'custom',  label: 'Custom' },
+    ].map(opt => (
+      <button
+        key={opt.key}
+        onClick={() => setChartRange(opt.key)}
+        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+          chartRange === opt.key
+            ? 'bg-gray-800 text-white border-transparent'
+            : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
+        }`}
+      >
+        {opt.label}
+      </button>
+    ))}
+
+    {chartRange === 'custom' && (
+      <div className="flex items-center gap-2 mt-1 sm:mt-0">
+        <input
+          type="datetime-local"
+          value={customFrom}
+          onChange={e => setCustomFrom(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <span className="text-gray-400 text-sm">→</span>
+        <input
+          type="datetime-local"
+          value={customTo}
+          onChange={e => setCustomTo(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+    )}
+
+    {chartLoading && (
+      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 ml-2"></div>
+    )}
+    <span className="text-xs text-gray-400 ml-auto">
+      {filteredChartRecords.length} records in range
+    </span>
+  </div>
+
+  {/* Toggle Buttons */}
+  <div className="px-6 pt-4 flex flex-wrap gap-2">
+    {Object.entries(topicLabels).map(([topic, label]) => {
+      const btnColors = {
+        'BCSIRbus':     'bg-blue-600 text-white',
+        'BCSIRshunt':   'bg-purple-600 text-white',
+        'BCSIRload':    'bg-orange-500 text-white',
+        'BCSIRcurrent': 'bg-green-600 text-white',
+        'BCSIRpower':   'bg-red-600 text-white',
+      }
+      const isActive = activeTopics.includes(topic)
+      return (
+        <button
+          key={topic}
+          onClick={() => toggleTopic(topic)}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+            isActive
+              ? btnColors[topic] + ' border-transparent shadow'
+              : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
+          }`}
+        >
+          {label}
+        </button>
+      )
+    })}
+  </div>
+
+  {/* Graphs */}
+  <div className="p-6">
+    {activeTopics.length === 0 ? (
+      <p className="text-center text-gray-400 text-sm py-8">👆 Click a sensor above to see its graph</p>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {activeTopics.map(topic => (
+          <SensorChart key={topic} topic={topic} data={chartData[topic]} />
+        ))}
+      </div>
+    )}
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
         {/* Latest Records Table */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">🕒 Latest 50 Records</h2>
+            <h2 className="text-xl font-semibold text-gray-900">🕒 Latest 10 Records</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -294,7 +751,7 @@ function App() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {latestRecords.map((record, index) => (
+                {sortedRecords.map((record, index) => (
                   <tr key={record._id || index} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-3 text-sm text-gray-400">{index + 1}</td>
                     <td className="px-6 py-3 whitespace-nowrap">
