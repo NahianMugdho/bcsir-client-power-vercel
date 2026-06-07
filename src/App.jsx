@@ -9,27 +9,27 @@ const API = "https://bcsir-server-power.onrender.com"
 
 // const API = "http://localhost:3000"
 const topicLabels = {
-    'BCSIRbus':     'Bus Voltage',
-    'BCSIRshunt':   'Shunt Voltage',
-    'BCSIRload':    'Load',
+    'BCSIRVoltage':     'Bus Voltage',
+    // 'BCSIRshunt':   'Shunt Voltage',
+    // 'BCSIRload':    'Load',
     'BCSIRcurrent': 'Current',
-    'BCSIRpower':   'Power'
+    // 'BCSIRpower':   'Power'
   }
 
   const topicUnits = {
-    'BCSIRbus':     'V',
-    'BCSIRshunt':   'mV',
-    'BCSIRload':    'Ω',
+    'BCSIRVoltage':     'mV',
+    // 'BCSIRshunt':   'mV',
+    // 'BCSIRload':    'Ω',
     'BCSIRcurrent': 'A',
-    'BCSIRpower':   'W'
+    // 'BCSIRpower':   'W'
   }
 
   const topicColors = {
-    'BCSIRbus':     'from-blue-50 to-blue-100 border-blue-200 text-blue-900',
-    'BCSIRshunt':   'from-purple-50 to-purple-100 border-purple-200 text-purple-900',
-    'BCSIRload':    'from-orange-50 to-orange-100 border-orange-200 text-orange-900',
+    'BCSIRVoltage':     'from-blue-50 to-blue-100 border-blue-200 text-blue-900',
+    // 'BCSIRshunt':   'from-purple-50 to-purple-100 border-purple-200 text-purple-900',
+    // 'BCSIRload':    'from-orange-50 to-orange-100 border-orange-200 text-orange-900',
     'BCSIRcurrent': 'from-green-50 to-green-100 border-green-200 text-green-900',
-    'BCSIRpower':   'from-red-50 to-red-100 border-red-200 text-red-900',
+  //   'BCSIRpower':   'from-red-50 to-red-100 border-red-200 text-red-900',
   }
 
 
@@ -52,7 +52,7 @@ const CustomTooltip = ({ active, payload, label, unit }) => {
 function SensorChart({ topic, data }) {
 
   const lineColors = {
-    'BCSIRbus': '#3b82f6', 'BCSIRshunt': '#a855f7',
+    'BCSIRVoltage': '#3b82f6', 'BCSIRshunt': '#a855f7',
     'BCSIRload': '#f97316', 'BCSIRcurrent': '#22c55e', 'BCSIRpower': '#ef4444'
   }
   const unit = topicUnits[topic]
@@ -106,70 +106,7 @@ const toggleTopic = (topic) => {
   )
 }
 
-// Build per-topic chart data sorted ascending by timestamp
-// const chartData = (() => {
-//   const byTopic = {}
-//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
-//   latestRecords.forEach(r => {
-//     if (byTopic[r.topic] !== undefined) {
-//       byTopic[r.topic].push({
-//         time: r.timestamp,
-//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
-//         value: parseFloat(r.value),
-//       })
-//     }
-//   })
-//   Object.keys(byTopic).forEach(t => {
-//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
-//   })
-//   return byTopic
-// })()
-// Filter allChartRecords by selected date range
-// const filteredChartRecords = (() => {
-//   const now = new Date()
-//   let from, to
 
-//   if (chartRange === 'today') {
-//     from = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-//     to   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-//   } else if (chartRange === '7days') {
-//     from = new Date(now - 7 * 24 * 60 * 60 * 1000)
-//     to   = now
-//   } else if (chartRange === '30days') {
-//     from = new Date(now - 30 * 24 * 60 * 60 * 1000)
-//     to   = now
-//   } else if (chartRange === 'custom' && customFrom && customTo) {
-//     from = new Date(customFrom)
-//     to   = new Date(customTo)
-//     to.setHours(23, 59, 59)
-//   } else {
-//     return allChartRecords
-//   }
-
-//   return allChartRecords.filter(r => {
-//     const t = new Date(r.timestamp)
-//     return t >= from && t <= to
-//   })
-// })()
-
-// // Build per-topic chart data sorted ascending by timestamp
-// const chartData = (() => {
-//   const byTopic = {}
-//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
-//   filteredChartRecords.forEach(r => {
-//     if (byTopic[r.topic] !== undefined) {
-//       byTopic[r.topic].push({
-//         time:  r.timestamp,
-//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
-//         value: parseFloat(r.value),
-//       })
-//     }
-//   })
-//   Object.keys(byTopic).forEach(t => {
-//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
-//   })
-//   return byTopic
-// })()
 const filteredChartRecords = useMemo(() => {
   const now = new Date()
   let from, to
@@ -197,23 +134,7 @@ const filteredChartRecords = useMemo(() => {
   })
 }, [allChartRecords, chartRange, customFrom, customTo])
 
-// const chartData = useMemo(() => {
-//   const byTopic = {}
-//   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
-//   filteredChartRecords.forEach(r => {
-//     if (byTopic[r.topic] !== undefined) {
-//       byTopic[r.topic].push({
-//         time:  r.timestamp,
-//         label: new Date(r.timestamp).toLocaleTimeString('en-US', { hour12: false }),
-//         value: parseFloat(r.value),
-//       })
-//     }
-//   })
-//   Object.keys(byTopic).forEach(t => {
-//     byTopic[t].sort((a, b) => new Date(a.time) - new Date(b.time))
-//   })
-//   return byTopic
-// }, [filteredChartRecords])
+
 const chartData = useMemo(() => {
   const byTopic = {}
   Object.keys(topicLabels).forEach(t => (byTopic[t] = []))
@@ -280,20 +201,7 @@ const sortedRecords = [...latestRecords].sort(
   }
 
 
-// const fetchChartData = async () => {
-//   setChartLoading(true)
-//   try {
-//     const response = await fetch(`${API}/api/all`)
-//     const result = await response.json()
-//     if (result.success) {
-//       setAllChartRecords(result.data)
-//     }
-//   } catch (error) {
-//     console.error('Error fetching chart data:', error)
-//   } finally {
-//     setChartLoading(false)
-//   }
-// }
+
 
 
 const fetchChartData = async (range, from, to) => {
@@ -495,31 +403,7 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* <div className="bg-white rounded-lg shadow p-6 flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-full">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Active Topics</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.topics.length}</p>
-              </div>
-            </div> */}
-
-            {/* <div className="bg-white rounded-lg shadow p-6 flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-full">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">To Get All</p>
-                <p className="text-sm font-semibold text-gray-700 break-all">click Export to Excel</p>
-              </div>
-            </div> */}
+          
           </div>
         )}
 
@@ -554,53 +438,6 @@ useEffect(() => {
 
 
 
-{/* Charts Section */}
-{/* <div className="bg-white rounded-lg shadow mb-8">
-  <div className="px-6 py-4 border-b border-gray-200">
-    <h2 className="text-xl font-semibold text-gray-900">📈 Sensor Trends</h2>
-    <p className="text-xs text-gray-400 mt-1">Click a sensor to toggle its graph · sorted by time</p>
-  </div> */}
-
-  {/* Toggle Buttons */}
-  {/* <div className="px-6 pt-4 flex flex-wrap gap-2">
-    {Object.entries(topicLabels).map(([topic, label]) => {
-      const btnColors = {
-        'BCSIRbus':     'bg-blue-600 text-white',
-        'BCSIRshunt':   'bg-purple-600 text-white',
-        'BCSIRload':    'bg-orange-500 text-white',
-        'BCSIRcurrent': 'bg-green-600 text-white',
-        'BCSIRpower':   'bg-red-600 text-white',
-      }
-      const isActive = activeTopics.includes(topic)
-      return (
-        <button
-          key={topic}
-          onClick={() => toggleTopic(topic)}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
-            isActive
-              ? btnColors[topic] + ' border-transparent shadow'
-              : 'bg-white text-gray-500 border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          {label}
-        </button>
-      )
-    })}
-  </div> */}
-
-  {/* Graphs */}
-  {/* <div className="p-6">
-    {activeTopics.length === 0 ? (
-      <p className="text-center text-gray-400 text-sm py-8">👆 Click a sensor above to see its graph</p>
-    ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {activeTopics.map(topic => (
-          <SensorChart key={topic} topic={topic} data={chartData[topic]} />
-        ))}
-      </div>
-    )}
-  </div>
-</div> */}
 
 
 
@@ -689,11 +526,11 @@ useEffect(() => {
   <div className="px-6 pt-4 flex flex-wrap gap-2">
     {Object.entries(topicLabels).map(([topic, label]) => {
       const btnColors = {
-        'BCSIRbus':     'bg-blue-600 text-white',
-        'BCSIRshunt':   'bg-purple-600 text-white',
-        'BCSIRload':    'bg-orange-500 text-white',
+        'BCSIRVoltage':     'bg-blue-600 text-white',
+        // 'BCSIRshunt':   'bg-purple-600 text-white',
+        // 'BCSIRload':    'bg-orange-500 text-white',
         'BCSIRcurrent': 'bg-green-600 text-white',
-        'BCSIRpower':   'bg-red-600 text-white',
+        // 'BCSIRpower':   'bg-red-600 text-white',
       }
       const isActive = activeTopics.includes(topic)
       return (
