@@ -647,7 +647,7 @@ const topicLabels = {
     'BCSIRVoltage':     'mV',
     // 'BCSIRshunt':   'mV',
     // 'BCSIRload':    'Ω',
-    'BCSIRCurrent': 'A',
+    'BCSIRCurrent': 'uA',
     // 'BCSIRpower':   'W'
   }
 
@@ -911,7 +911,7 @@ const fetchChartData = async (range, from, to) => {
           .map(group => ({
             'Timestamp':        group._timestamp.toLocaleString('en-US'),
             'Bus Voltage (mV)': group['Voltage'] || '',
-            'Current (A)':      group['Current'] || '',
+            'Current (uA)':      group['Current'] || '',
           }))
 
         const ws = XLSX.utils.json_to_sheet(excelData)
